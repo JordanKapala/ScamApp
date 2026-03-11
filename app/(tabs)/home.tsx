@@ -8,8 +8,10 @@ import {
   TouchableOpacity,
   View
 } from 'react-native';
+import { useAuth } from '../context/AuthContext';
 
 const CONVERSE_URL = 'https://ipq6ad0enh.execute-api.us-east-1.amazonaws.com/converse';
+const SAVE_URL = 'https://ipq6ad0enh.execute-api.us-east-1.amazonaws.com/saveConversation';
 
 type Message = {
   role: 'user' | 'assistant';
@@ -19,17 +21,18 @@ type Message = {
 type ConversationState = 'idle' | 'recording' | 'processing' | 'speaking';
 
 export default function HomeScreen() {
+  const { email } = useAuth();
   const [state, setState] = useState<ConversationState>('idle');
   const [history, setHistory] = useState<Message[]>([]);
   const [error, setError] = useState('');
   const recordingRef = useRef<Audio.Recording | null>(null);
   const soundRef = useRef<Audio.Sound | null>(null);
   const scrollRef = useRef<ScrollView>(null);
+  const startTimeRef = useRef<number | null>(null);
 
   useEffect(() => {
     Audio.requestPermissionsAsync();
     return () => {
-      // Cleanup on unmount
       if (soundRef.current) soundRef.current.unloadAsync();
     };
   }, []);
@@ -37,6 +40,9 @@ export default function HomeScreen() {
   const startRecording = async () => {
     try {
       setError('');
+      if (startTimeRef.current === null) {
+        startTimeRef.current = Date.now();
+      }
       await Audio.setAudioModeAsync({
         allowsRecordingIOS: true,
         playsInSilentModeIOS: true,
@@ -60,7 +66,6 @@ export default function HomeScreen() {
       const uri = recordingRef.current.getURI();
       recordingRef.current = null;
 
-      // Read file as base64
       const response = await fetch(uri!);
       const blob = await response.blob();
       const base64 = await new Promise<string>((resolve, reject) => {
@@ -73,7 +78,6 @@ export default function HomeScreen() {
         reader.readAsDataURL(blob);
       });
 
-      // Send to Lambda
       const res = await fetch(CONVERSE_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -87,10 +91,8 @@ export default function HomeScreen() {
         return;
       }
 
-      // Update transcript history
       setHistory(data.history);
 
-      // Play response audio
       setState('speaking');
       await Audio.setAudioModeAsync({ allowsRecordingIOS: false });
       const { sound } = await Audio.Sound.createAsync(
@@ -115,10 +117,27 @@ export default function HomeScreen() {
     else if (state === 'recording') stopRecordingAndSend();
   };
 
-  const resetConversation = () => {
+  const endConversation = async () => {
+    if (history.length === 0) return;
+
+    const duration = startTimeRef.current
+      ? Math.floor((Date.now() - startTimeRef.current) / 1000)
+      : 0;
+
+    try {
+      await fetch(SAVE_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userEmail: email, history, duration }),
+      });
+    } catch (e) {
+      console.error('Failed to save conversation:', e);
+    }
+
     setHistory([]);
     setError('');
     setState('idle');
+    startTimeRef.current = null;
   };
 
   const buttonLabel = {
@@ -140,7 +159,6 @@ export default function HomeScreen() {
       <Text style={styles.title}>Scam Simulator</Text>
       <Text style={styles.subtitle}>Talk to Edna, our AI scam-buster</Text>
 
-      {/* Transcript */}
       <ScrollView
         ref={scrollRef}
         style={styles.transcript}
@@ -169,7 +187,6 @@ export default function HomeScreen() {
 
       {error ? <Text style={styles.error}>{error}</Text> : null}
 
-      {/* Main button */}
       <TouchableOpacity
         style={[styles.recordButton, { backgroundColor: buttonColor }]}
         onPress={handleButton}
@@ -182,7 +199,7 @@ export default function HomeScreen() {
       </TouchableOpacity>
 
       {history.length > 0 && state === 'idle' && (
-        <TouchableOpacity style={styles.resetButton} onPress={resetConversation}>
+        <TouchableOpacity style={styles.resetButton} onPress={endConversation}>
           <Text style={styles.resetText}>End Conversation</Text>
         </TouchableOpacity>
       )}

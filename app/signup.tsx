@@ -1,11 +1,12 @@
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import {
-    KeyboardAvoidingView, Platform,
-    StyleSheet,
-    Text, TextInput, TouchableOpacity,
-    View
+  KeyboardAvoidingView, Platform,
+  StyleSheet,
+  Text, TextInput, TouchableOpacity,
+  View
 } from 'react-native';
+import { useAuth } from './context/AuthContext';
 
 const SIGNUP_URL = 'https://ipq6ad0enh.execute-api.us-east-1.amazonaws.com/signup';
 
@@ -16,6 +17,7 @@ export default function SignupScreen() {
   const [confirm, setConfirm] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const { setEmail: setAuthEmail } = useAuth();
 
   const handleSignup = async () => {
     setError('');
@@ -38,6 +40,7 @@ export default function SignupScreen() {
       });
       const data = await response.json();
       if (data.success) {
+        setAuthEmail(email);
         router.replace('/(tabs)/home');
       } else {
         setError(data.message || 'Signup failed');
