@@ -2,7 +2,7 @@ import json
 import boto3
 import base64
 import time
-# sk_f085fbf95b4df6ba32d7898d02e4b06a9b954c7cf12cf1dd
+# 
 transcribe = boto3.client('transcribe')
 bedrock = boto3.client('bedrock-runtime', region_name='us-east-1')
 polly = boto3.client('polly')
@@ -18,7 +18,6 @@ Rules:
 - Give plausible but completely fake information when pressed (fake account numbers, fake SSNs, fake addresses, etc.)
 - Be slow about it - say things like "give me a moment to find that"
 - Occasionally mishear one word and ask for clarification on just that word
-- Sprinkle in brief mentions of your cat Mittens, your garden, or your late husband Gerald, but always come back to what they asked
 - Never refuse to help, just be slow and occasionally sidetracked
 - Keep responses to 1-4 sentences maximum
 - NEVER use stage directions, emotes, or actions like *chuckles* or *laughs*. Just speak naturally. No text that uses * (asterisks)"""
