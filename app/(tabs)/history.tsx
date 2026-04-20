@@ -1,4 +1,5 @@
-import { useEffect, useState } from 'react';
+import { useFocusEffect } from 'expo-router';
+import { useCallback, useState } from 'react';
 import {
   ActivityIndicator,
   ScrollView,
@@ -30,9 +31,11 @@ export default function HistoryScreen() {
   const [expandedIndex, setExpandedIndex] = useState<number | null>(null);
   const [error, setError] = useState('');
 
-  useEffect(() => {
-    fetchConversations();
-  }, []);
+  useFocusEffect(
+    useCallback(() => {
+      fetchConversations();
+    }, [email])
+  );
 
   const fetchConversations = async () => {
     setLoading(true);
