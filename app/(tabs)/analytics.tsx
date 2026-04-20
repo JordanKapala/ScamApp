@@ -1,29 +1,31 @@
-import { useFocusEffect } from 'expo-router';
-import { useCallback, useState } from 'react';
+import { useFocusEffect } from "expo-router";
+import { useCallback, useState } from "react";
 import {
   ActivityIndicator,
   Dimensions,
+  Image,
   ScrollView,
   StyleSheet,
   Text,
   View,
-} from 'react-native';
-import { useAuth } from '../context/AuthContext';
+  Platform,
+  KeyboardAvoidingView,
+} from "react-native";
+import { useAuth } from "../context/AuthContext";
 
-const GET_URL = 'https://ipq6ad0enh.execute-api.us-east-1.amazonaws.com/getConversation';
-const SCREEN_WIDTH = Dimensions.get('window').width;
+const GET_URL =
+  "https://ipq6ad0enh.execute-api.us-east-1.amazonaws.com/getConversation";
+const SCREEN_WIDTH = Dimensions.get("window").width;
 const CHART_WIDTH = SCREEN_WIDTH - 48;
 const CHART_HEIGHT = 140;
 
-type Message = { role: 'user' | 'assistant'; content: string };
+type Message = { role: "user" | "assistant"; content: string };
 type Conversation = {
   timestamp: string;
   date: string;
   duration: string;
   history: Message[];
 };
-
-
 
 function median(arr: number[]) {
   if (!arr.length) return 0;
@@ -41,14 +43,12 @@ function formatSecs(s: number) {
 function groupByDay(convos: Conversation[]) {
   const map: Record<string, number> = {};
   convos.forEach((c) => {
-    const label = c.date ?? 'Unknown';
+    const label = c.date ?? "Unknown";
     map[label] = (map[label] ?? 0) + 1;
   });
   const entries = Object.entries(map);
   return entries.slice(-7);
 }
-
-
 
 function StatCard({ label, value }: { label: string; value: string }) {
   return (
@@ -62,7 +62,7 @@ function StatCard({ label, value }: { label: string; value: string }) {
 function BarChart({
   data,
   title,
-  unit = '',
+  unit = "",
 }: {
   data: [string, number][];
   title: string;
@@ -81,7 +81,7 @@ function BarChart({
           return (
             <View key={i} style={styles.barGroup}>
               <Text style={styles.barValueLabel}>
-                {unit === 's' ? formatSecs(value) : value}
+                {unit === "s" ? formatSecs(value) : value}
               </Text>
               <View style={[styles.bar, { height: barH, width: barWidth }]} />
               <Text style={styles.barLabel} numberOfLines={1}>
@@ -95,13 +95,11 @@ function BarChart({
   );
 }
 
-
-
 export default function AnalyticsScreen() {
   const { email } = useAuth();
   const [convos, setConvos] = useState<Conversation[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
+  const [error, setError] = useState("");
 
   useFocusEffect(
     useCallback(() => {
@@ -109,27 +107,29 @@ export default function AnalyticsScreen() {
       (async () => {
         if (!email) return;
         setLoading(true);
-        setError('');
+        setError("");
         try {
-          const res = await fetch(`${GET_URL}?userEmail=${encodeURIComponent(email)}`);
+          const res = await fetch(
+            `${GET_URL}?userEmail=${encodeURIComponent(email)}`
+          );
           const data = await res.json();
           if (active) {
             if (data.success) setConvos(data.conversations);
-            else setError('Failed to load data');
+            else setError("Failed to load data");
           }
         } catch {
-          if (active) setError('Network error');
+          if (active) setError("Network error");
         } finally {
           if (active) setLoading(false);
         }
       })();
-      return () => { active = false; };
+      return () => {
+        active = false;
+      };
     }, [email])
   );
 
-
-
-  const durations = convos.map((c) => parseInt(c.duration ?? '0'));
+  const durations = convos.map((c) => parseInt(c.duration ?? "0"));
   const exchanges = convos.map((c) => Math.floor(c.history.length / 2));
 
   const totalCalls = convos.length;
@@ -147,17 +147,22 @@ export default function AnalyticsScreen() {
 
   const durationBySession: [string, number][] = convos
     .slice(-10)
-    .map((c, i) => [`#${convos.length - 10 + i + 1 < 1 ? i + 1 : convos.length - 10 + i + 1}`, parseInt(c.duration ?? '0')]);
+    .map((c, i) => [
+      `#${convos.length - 10 + i + 1 < 1 ? i + 1 : convos.length - 10 + i + 1}`,
+      parseInt(c.duration ?? "0"),
+    ]);
 
   const exchangesBySession: [string, number][] = convos
     .slice(-10)
-    .map((c, i) => [`#${convos.length - 10 + i + 1 < 1 ? i + 1 : convos.length - 10 + i + 1}`, Math.floor(c.history.length / 2)]);
-
+    .map((c, i) => [
+      `#${convos.length - 10 + i + 1 < 1 ? i + 1 : convos.length - 10 + i + 1}`,
+      Math.floor(c.history.length / 2),
+    ]);
 
   if (loading) {
     return (
       <View style={styles.centered}>
-        <ActivityIndicator size="large" color="#111" />
+        <ActivityIndicator size="large" color="#0095f6" />
       </View>
     );
   }
@@ -173,95 +178,206 @@ export default function AnalyticsScreen() {
   if (totalCalls === 0) {
     return (
       <View style={styles.centered}>
-        <Text style={styles.emptyTitle}>No data yet</Text>
-        <Text style={styles.emptySubtitle}>Complete a call on the Home tab to see your analytics.</Text>
+        <Image
+          source={require("../../assets/images/guardiangate.png")}
+          style={styles.emptyLogo}
+        />
+        <Text style={styles.emptyTitle}>No Data Yet</Text>
+        <Text style={styles.emptySubtitle}>
+          Complete a session on the Home tab to see your mission analytics.
+        </Text>
       </View>
     );
   }
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-      <Text style={styles.title}>Analytics</Text>
-      <Text style={styles.subtitle}>How your decoy missions are going</Text>
-
-      <Text style={styles.sectionHeader}>OVERVIEW</Text>
-      <View style={styles.statRow}>
-        <StatCard label="Total Calls" value={String(totalCalls)} />
-        <StatCard label="Total Time" value={formatSecs(totalTime)} />
-      </View>
-
-      <Text style={styles.sectionHeader}>CALL DURATION</Text>
-      <View style={styles.statRow}>
-        <StatCard label="Average" value={formatSecs(avgDuration)} />
-        <StatCard label="Median" value={formatSecs(medDuration)} />
-        <StatCard label="Longest" value={formatSecs(maxDuration)} />
-      </View>
-
-      <BarChart
-        data={durationBySession}
-        title="Duration per session (last 10)"
-        unit="s"
+    <View style={styles.container}>
+      {/* FIXED LOGO: Move outside of KeyboardAvoidingView and ScrollView.
+          This ensures position: 'absolute' pins it to the root View, 
+          preventing it from moving when internal content is scrolled.
+      */}
+      <Image
+        source={require("../../assets/images/guardiangate.png")}
+        style={styles.topLeftLogo}
       />
 
-      <Text style={styles.sectionHeader}>EXCHANGES PER CALL</Text>
-      <View style={styles.statRow}>
-        <StatCard label="Average" value={avgExchanges.toFixed(1)} />
-        <StatCard label="Median" value={String(medExchanges)} />
-        <StatCard label="Most" value={String(maxExchanges)} />
-      </View>
+      <KeyboardAvoidingView
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        style={{ flex: 1 }}
+      >
+        <ScrollView
+          contentContainerStyle={styles.content}
+          showsVerticalScrollIndicator={false}
+        >
+          <View style={styles.headerContainer}>
+            <Text style={styles.title}>Analytics</Text>
+            <Text style={styles.subtitle}>Protection Performance Metrics</Text>
+          </View>
 
-      <BarChart
-        data={exchangesBySession}
-        title="Exchanges per session (last 10)"
-      />
+          <Text style={styles.sectionHeader}>MISSION OVERVIEW</Text>
+          <View style={styles.statRow}>
+            <StatCard label="Total Calls" value={String(totalCalls)} />
+            <StatCard label="Total Time" value={formatSecs(totalTime)} />
+          </View>
 
-      {callsByDay.length > 1 && (
-        <>
-          <Text style={styles.sectionHeader}>CALLS OVER TIME</Text>
-          <BarChart data={callsByDay} title="Calls per day" />
-        </>
-      )}
-    </ScrollView>
+          <Text style={styles.sectionHeader}>CALL DURATION</Text>
+          <View style={styles.statRow}>
+            <StatCard label="Average" value={formatSecs(avgDuration)} />
+            <StatCard label="Median" value={formatSecs(medDuration)} />
+            <StatCard label="Longest" value={formatSecs(maxDuration)} />
+          </View>
+
+          <BarChart
+            data={durationBySession}
+            title="Duration per session (last 10)"
+            unit="s"
+          />
+
+          <Text style={styles.sectionHeader}>EXCHANGES PER CALL</Text>
+          <View style={styles.statRow}>
+            <StatCard label="Average" value={avgExchanges.toFixed(1)} />
+            <StatCard label="Median" value={String(medExchanges)} />
+            <StatCard label="Most" value={String(maxExchanges)} />
+          </View>
+
+          <BarChart
+            data={exchangesBySession}
+            title="Exchanges per session (last 10)"
+          />
+
+          {callsByDay.length > 1 && (
+            <>
+              <Text style={styles.sectionHeader}>CALLS OVER TIME</Text>
+              <BarChart data={callsByDay} title="Calls per day" />
+            </>
+          )}
+        </ScrollView>
+      </KeyboardAvoidingView>
+    </View>
   );
 }
 
-
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#fff' },
-  content: { paddingHorizontal: 24, paddingTop: 60, paddingBottom: 48 },
-  centered: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 32 },
-  title: { fontSize: 28, fontWeight: '700', color: '#111' },
-  subtitle: { fontSize: 15, color: '#666', marginTop: 4, marginBottom: 28 },
+  container: {
+    flex: 1,
+    backgroundColor: "#fff",
+  },
+  topLeftLogo: {
+    position: "absolute",
+    top: 50,
+    left: 20,
+    width: 100,
+    height: 100,
+    resizeMode: "contain",
+    zIndex: 999, // Ensures logo sits above the ScrollView content
+    elevation: 10, // Android specific zIndex support
+  },
+  content: {
+    paddingHorizontal: 24,
+    paddingBottom: 48,
+  },
+  headerContainer: {
+    marginTop: 120, // Increased to ensure text starts clearly below fixed logo
+    alignItems: "center",
+    marginBottom: 28,
+  },
+  centered: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    padding: 32,
+    backgroundColor: "#fff",
+  },
+  title: {
+    fontSize: 28,
+    fontWeight: "700",
+    color: "#00376b",
+    fontFamily: Platform.OS === "ios" ? "System" : "serif",
+  },
+  subtitle: { fontSize: 15, color: "#8e8e8e", marginTop: 4 },
   sectionHeader: {
-    fontSize: 11, fontWeight: '700', color: '#5e5e5e',
-    letterSpacing: 1.5, marginBottom: 12, marginTop: 8,
+    fontSize: 11,
+    fontWeight: "700",
+    color: "#00376b",
+    letterSpacing: 1.5,
+    marginBottom: 12,
+    marginTop: 16,
   },
-  statRow: { flexDirection: 'row', gap: 10, marginBottom: 20, flexWrap: 'wrap' },
+  statRow: {
+    flexDirection: "row",
+    gap: 12,
+    marginBottom: 20,
+    flexWrap: "wrap",
+  },
   statCard: {
-    flex: 1, minWidth: 90,
-    borderWidth: 1, borderColor: '#eee', borderRadius: 12,
-    padding: 14, alignItems: 'center',
+    flex: 1,
+    minWidth: 90,
+    backgroundColor: "#fff",
+    borderWidth: 1,
+    borderColor: "#dbdbdb",
+    borderRadius: 8,
+    padding: 16,
+    alignItems: "center",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 2,
   },
-  statValue: { fontSize: 20, fontWeight: '700', color: '#111' },
-  statLabel: { fontSize: 12, color: '#999', marginTop: 4, textAlign: 'center' },
-
+  statValue: { fontSize: 20, fontWeight: "700", color: "#262626" },
+  statLabel: {
+    fontSize: 12,
+    color: "#8e8e8e",
+    marginTop: 4,
+    textAlign: "center",
+  },
   chartContainer: {
-    borderWidth: 1, borderColor: '#eee', borderRadius: 12,
-    padding: 16, marginBottom: 20,
+    backgroundColor: "#fafafa",
+    borderWidth: 1,
+    borderColor: "#efefef",
+    borderRadius: 8,
+    padding: 16,
+    marginBottom: 20,
   },
-  chartTitle: { fontSize: 13, color: '#999', marginBottom: 16 },
+  chartTitle: {
+    fontSize: 13,
+    color: "#8e8e8e",
+    marginBottom: 16,
+    fontWeight: "600",
+  },
   chartArea: {
-    flexDirection: 'row',
-    alignItems: 'flex-end',
+    flexDirection: "row",
+    alignItems: "flex-end",
     height: CHART_HEIGHT + 40,
-    gap: 6,
+    gap: 8,
   },
-  barGroup: { flex: 1, alignItems: 'center', justifyContent: 'flex-end' },
-  bar: { backgroundColor: '#111', borderRadius: 4 },
-  barLabel: { fontSize: 9, color: '#bbb', marginTop: 4, textAlign: 'center' },
-  barValueLabel: { fontSize: 9, color: '#666', marginBottom: 4, textAlign: 'center' },
-
-  emptyTitle: { fontSize: 18, fontWeight: '600', color: '#111', marginBottom: 8 },
-  emptySubtitle: { fontSize: 14, color: '#999', textAlign: 'center' },
-  errorText: { color: 'red', fontSize: 15 },
+  barGroup: { flex: 1, alignItems: "center", justifyContent: "flex-end" },
+  bar: { backgroundColor: "#0095f6", borderRadius: 4 },
+  barLabel: {
+    fontSize: 9,
+    color: "#8e8e8e",
+    marginTop: 6,
+    textAlign: "center",
+  },
+  barValueLabel: {
+    fontSize: 9,
+    color: "#00376b",
+    marginBottom: 4,
+    textAlign: "center",
+    fontWeight: "600",
+  },
+  emptyLogo: { width: 100, height: 100, marginBottom: 20, opacity: 0.5 },
+  emptyTitle: {
+    fontSize: 18,
+    fontWeight: "600",
+    color: "#00376b",
+    marginBottom: 8,
+  },
+  emptySubtitle: {
+    fontSize: 14,
+    color: "#8e8e8e",
+    textAlign: "center",
+    lineHeight: 20,
+  },
+  errorText: { color: "#ed4956", fontSize: 15, fontWeight: "600" },
 });

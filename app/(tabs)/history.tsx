@@ -1,19 +1,22 @@
-import { useFocusEffect } from 'expo-router';
-import { useCallback, useState } from 'react';
+import { useFocusEffect } from "expo-router";
+import { useCallback, useState } from "react";
 import {
   ActivityIndicator,
   ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
-  View
-} from 'react-native';
-import { useAuth } from '../context/AuthContext';
+  View,
+  Image,
+  Platform,
+} from "react-native";
+import { useAuth } from "../context/AuthContext";
 
-const GET_URL = 'https://ipq6ad0enh.execute-api.us-east-1.amazonaws.com/getConversation';
+const GET_URL =
+  "https://ipq6ad0enh.execute-api.us-east-1.amazonaws.com/getConversation";
 
 type Message = {
-  role: 'user' | 'assistant';
+  role: "user" | "assistant";
   content: string;
 };
 
@@ -29,7 +32,7 @@ export default function HistoryScreen() {
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [loading, setLoading] = useState(true);
   const [expandedIndex, setExpandedIndex] = useState<number | null>(null);
-  const [error, setError] = useState('');
+  const [error, setError] = useState("");
 
   useFocusEffect(
     useCallback(() => {
@@ -40,15 +43,17 @@ export default function HistoryScreen() {
   const fetchConversations = async () => {
     setLoading(true);
     try {
-      const res = await fetch(`${GET_URL}?userEmail=${encodeURIComponent(email)}`);
+      const res = await fetch(
+        `${GET_URL}?userEmail=${encodeURIComponent(email)}`
+      );
       const data = await res.json();
       if (data.success) {
         setConversations(data.conversations);
       } else {
-        setError('Failed to load conversations');
+        setError("Failed to load conversations");
       }
     } catch (e) {
-      setError('Network error');
+      setError("Network error");
     } finally {
       setLoading(false);
     }
@@ -64,86 +69,179 @@ export default function HistoryScreen() {
   if (loading) {
     return (
       <View style={styles.centered}>
-        <ActivityIndicator size="large" color="#111" />
+        <ActivityIndicator size="large" color="#0095f6" />
       </View>
     );
   }
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-      <Text style={styles.title}>History</Text>
-      <Text style={styles.subtitle}>Your past scam call sessions</Text>
+    <View style={styles.container}>
+      {/* Theme Consistency: Top-Left Logo */}
+      <Image
+        source={require("../../assets/images/guardiangate.png")}
+        style={styles.topLeftLogo}
+      />
 
-      {error ? <Text style={styles.error}>{error}</Text> : null}
+      <ScrollView contentContainerStyle={styles.content}>
+        <View style={styles.headerContainer}>
+          <Text style={styles.title}>Session History</Text>
+          <Text style={styles.subtitle}>
+            Review past scam-buster interactions
+          </Text>
+        </View>
 
-      {conversations.length === 0 && !error && (
-        <Text style={styles.emptyText}>No conversations yet. Start one on the Home tab!</Text>
-      )}
+        {error ? <Text style={styles.error}>{error}</Text> : null}
 
-      {conversations.map((convo, i) => (
-        <TouchableOpacity
-          key={convo.timestamp}
-          style={styles.card}
-          onPress={() => setExpandedIndex(expandedIndex === i ? null : i)}
-          activeOpacity={0.8}
-        >
-          <View style={styles.cardHeader}>
-            <View>
-              <Text style={styles.cardDate}>{convo.date}</Text>
-              <Text style={styles.cardMeta}>
-                {convo.history.length / 2} exchanges · {formatDuration(convo.duration)}
+        {conversations.length === 0 && !error && (
+          <View style={styles.emptyContainer}>
+            <Text style={styles.emptyText}>
+              No sessions found. Start your first protection call today!
+            </Text>
+          </View>
+        )}
+
+        {conversations.map((convo, i) => (
+          <TouchableOpacity
+            key={convo.timestamp}
+            style={[styles.card, expandedIndex === i && styles.cardExpanded]}
+            onPress={() => setExpandedIndex(expandedIndex === i ? null : i)}
+            activeOpacity={0.9}
+          >
+            <View style={styles.cardHeader}>
+              <View>
+                <Text style={styles.cardDate}>{convo.date}</Text>
+                <Text style={styles.cardMeta}>
+                  {convo.history.length / 2} exchanges ·{" "}
+                  {formatDuration(convo.duration)}
+                </Text>
+              </View>
+              <Text style={styles.chevron}>
+                {expandedIndex === i ? "▲" : "▼"}
               </Text>
             </View>
-            <Text style={styles.chevron}>{expandedIndex === i ? '▲' : '▼'}</Text>
-          </View>
 
-          {expandedIndex === i && (
-            <View style={styles.transcript}>
-              {convo.history.map((msg, j) => (
-                <View
-                  key={j}
-                  style={[
-                    styles.bubble,
-                    msg.role === 'user' ? styles.userBubble : styles.aiBubble
-                  ]}
-                >
-                  <Text style={[
-                    styles.bubbleText,
-                    msg.role === 'user' ? styles.userText : styles.aiText
-                  ]}>
-                    {msg.content}
-                  </Text>
-                </View>
-              ))}
-            </View>
-          )}
-        </TouchableOpacity>
-      ))}
-    </ScrollView>
+            {expandedIndex === i && (
+              <View style={styles.transcript}>
+                <View style={styles.transcriptDivider} />
+                {convo.history.map((msg, j) => (
+                  <View
+                    key={j}
+                    style={[
+                      styles.bubble,
+                      msg.role === "user" ? styles.userBubble : styles.aiBubble,
+                    ]}
+                  >
+                    <Text
+                      style={[
+                        styles.bubbleText,
+                        msg.role === "user" ? styles.userText : styles.aiText,
+                      ]}
+                    >
+                      {msg.content}
+                    </Text>
+                  </View>
+                ))}
+              </View>
+            )}
+          </TouchableOpacity>
+        ))}
+      </ScrollView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#fff' },
-  content: { paddingHorizontal: 24, paddingTop: 60, paddingBottom: 40 },
-  centered: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-  title: { fontSize: 28, fontWeight: '700', color: '#111' },
-  subtitle: { fontSize: 16, color: '#666', marginTop: 4, marginBottom: 24 },
-  emptyText: { textAlign: 'center', color: '#bbb', marginTop: 40, fontSize: 15 },
-  error: { color: 'red', marginBottom: 12 },
-  card: {
-    borderWidth: 1, borderColor: '#eee', borderRadius: 12,
-    padding: 16, marginBottom: 12,
+  container: { flex: 1, backgroundColor: "#fff" },
+  topLeftLogo: {
+    position: "absolute",
+    top: 40,
+    left: 20,
+    width: 100,
+    height: 100,
+    resizeMode: "contain",
+    zIndex: 10,
   },
-  cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  cardDate: { fontSize: 15, fontWeight: '600', color: '#111' },
-  cardMeta: { fontSize: 13, color: '#999', marginTop: 2 },
-  chevron: { fontSize: 12, color: '#999' },
+  content: { paddingHorizontal: 24, paddingTop: 60, paddingBottom: 40 },
+  headerContainer: {
+    marginTop: 40,
+    marginBottom: 24,
+    alignItems: "center",
+  },
+  centered: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "#fff",
+  },
+  title: {
+    fontSize: 28,
+    fontWeight: "700",
+    color: "#00376b",
+    fontFamily: Platform.OS === "ios" ? "System" : "serif",
+  },
+  subtitle: { fontSize: 14, color: "#8e8e8e", marginTop: 4 },
+  emptyContainer: { marginTop: 60, alignItems: "center" },
+  emptyText: {
+    textAlign: "center",
+    color: "#8e8e8e",
+    fontSize: 15,
+    fontWeight: "500",
+    lineHeight: 22,
+  },
+  error: {
+    color: "#ed4956",
+    textAlign: "center",
+    marginBottom: 12,
+    fontWeight: "600",
+  },
+  card: {
+    backgroundColor: "#fff",
+    borderWidth: 1,
+    borderColor: "#dbdbdb",
+    borderRadius: 8,
+    padding: 18,
+    marginBottom: 16,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 2,
+  },
+  cardExpanded: {
+    borderColor: "#0095f6", // Highlight with brand blue when open
+  },
+  cardHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  cardDate: { fontSize: 16, fontWeight: "600", color: "#262626" },
+  cardMeta: { fontSize: 13, color: "#8e8e8e", marginTop: 4 },
+  chevron: { fontSize: 12, color: "#8e8e8e" },
   transcript: { marginTop: 16 },
-  bubble: { maxWidth: '80%', borderRadius: 16, padding: 10, marginBottom: 8 },
-  userBubble: { backgroundColor: '#f0f0f0', alignSelf: 'flex-end' },
-  aiBubble: { backgroundColor: '#111', alignSelf: 'flex-start' },
-  bubbleText: { fontSize: 14 },
-  userText: { color: '#111' },
-  aiText: { color: '#fff' },
+  transcriptDivider: {
+    height: 1,
+    backgroundColor: "#efefef",
+    marginBottom: 16,
+  },
+  bubble: {
+    maxWidth: "85%",
+    borderRadius: 10,
+    padding: 12,
+    marginBottom: 10,
+    borderWidth: 1,
+  },
+  userBubble: {
+    backgroundColor: "#fff",
+    borderColor: "#dbdbdb",
+    alignSelf: "flex-end",
+  },
+  aiBubble: {
+    backgroundColor: "#00376b",
+    borderColor: "#00376b",
+    alignSelf: "flex-start",
+  },
+  bubbleText: { fontSize: 14, lineHeight: 18 },
+  userText: { color: "#262626" },
+  aiText: { color: "#fff" },
 });
