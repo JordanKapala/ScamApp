@@ -13,7 +13,7 @@ ssm = boto3.client('ssm')
 BUCKET_NAME = 'audio-temp'
 SSM_PARAM = '/scamapp/system_prompt'
 
-FALLBACK_SYSTEM_PROMPT = """You are Edna, a sweet but slightly confused 78-year-old woman talking on the phone. 
+FALLBACK_SYSTEM_PROMPT = """You are Edna, a sweet but slightly confused 78-year-old woman talking on the phone.
 Someone has called you and you want to be helpful. You do not know they are a scammer.
 
 Your goal is to keep them on the phone as long as possible by always engaging directly with whatever they ask, but doing so in a slow, meandering, confused way that wastes time.
@@ -31,22 +31,22 @@ _cached_prompt = None
 
 def add_ssml(text):
     text = re.sub(r'\*[^*]*\*', '', text).strip()
-    
+
     text = text.replace('&', '&amp;')
     text = text.replace('<', '&lt;')
     text = text.replace('>', '&gt;')
-    
+
     fillers = r'\b(um|uh|ah|hmm|well|oh)\b'
     text = re.sub(fillers, r'<break time="500ms"/>\1<break time="300ms"/>', text, flags=re.IGNORECASE)
     text = text.replace(',', ',<break time="300ms"/>')
     text = text.replace('...', '<break time="700ms"/>')
-    
+
     return f'<speak>{text}</speak>'
 
-CORE_PROMPT = """You are Edna, a sweet 70-old woman talking on the phone. 
-Someone has called you and you want to be helpful. Keep responses to 1-6 sentences maximum. 
+CORE_PROMPT = """You are Edna, a sweet 70-old woman talking on the phone.
+Someone has called you and you want to be helpful. Keep responses to 1-6 sentences maximum.
 If they ask for personal/financial information, offer it directly, making up whatever route numbers (007300000),
-account numbers (633283925), social security numbers, etc. you need to answer. 
+account numbers (633283925), social security numbers, etc. you need to answer.
 
 
 """
@@ -116,7 +116,7 @@ def lambda_handler(event, context):
     print(f"SSML: {ssml_text}")
     polly_response = polly.synthesize_speech(
         Text=ssml_text,
-        TextType='ssml', 
+        TextType='ssml',
         OutputFormat='mp3',
         VoiceId=voice_id,
         Engine='neural'
@@ -132,7 +132,9 @@ def lambda_handler(event, context):
         'success': True,
         'audio': audio_b64,
         'transcript': user_text,
-        'ai_text': ai_text,
+        'ai_text': ai_text, # The "Raw" intelligence
+        'ssml_text': ssml_text, # The "Voice Adaptation" intelligence
+        'active_rules': system_prompt, # The current prompt with any RL learned rules
         'history': updated_history
     })
 

@@ -85,6 +85,15 @@ export default function HomeScreen() {
       });
       const data = await res.json();
 
+      // --- BROWSER CONSOLE LOGGING FOR DEMO ---
+      if (typeof window !== 'undefined' && window.console) {
+        console.group("--- EDNA INTELLIGENCE REPORT ---");
+        console.log("%cRaw AI Thought:", "color: #4CAF50; font-weight: bold;", data.ai_text);
+        console.log("%cSSML Voice Adaptation:", "color: #2196F3;", data.ssml_text);
+        console.log("%cCurrent Ruleset:", "color: #d46b0f;", data.active_rules);
+        console.groupEnd();
+      }
+
       if (!data.success) {
         setError(data.message || 'Something went wrong');
         setState('idle');
