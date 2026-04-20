@@ -21,7 +21,7 @@ type Message = {
 type ConversationState = 'idle' | 'recording' | 'processing' | 'speaking';
 
 export default function HomeScreen() {
-  const { email } = useAuth();
+  const { email, voice } = useAuth();
   const [state, setState] = useState<ConversationState>('idle');
   const [history, setHistory] = useState<Message[]>([]);
   const [error, setError] = useState('');
@@ -81,7 +81,7 @@ export default function HomeScreen() {
       const res = await fetch(CONVERSE_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ audio: base64, history }),
+        body: JSON.stringify({ audio: base64, history, voice }),
       });
       const data = await res.json();
 

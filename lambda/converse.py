@@ -53,7 +53,7 @@ account numbers (633283925), social security numbers, etc. you need to answer.
 
 def get_system_prompt():
     global _cached_prompt
-    if not _cached_prompt:
+    if _cached_prompt:
         return _cached_prompt
     try:
         response = ssm.get_parameter(Name=SSM_PARAM)
@@ -68,6 +68,7 @@ def lambda_handler(event, context):
     body = json.loads(event['body'])
     audio_base64 = body.get('audio')
     conversation_history = body.get('history', [])
+    voice_id = body.get('voice', 'Joanna')
 
     audio_bytes = base64.b64decode(audio_base64)
     audio_key = f"input/{context.aws_request_id}.wav"
@@ -117,7 +118,7 @@ def lambda_handler(event, context):
         Text=ssml_text,
         TextType='ssml', 
         OutputFormat='mp3',
-        VoiceId='Joanna',
+        VoiceId=voice_id,
         Engine='neural'
     )
     audio_data = polly_response['AudioStream'].read()
